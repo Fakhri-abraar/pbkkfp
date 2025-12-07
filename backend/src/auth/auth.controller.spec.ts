@@ -15,6 +15,7 @@ describe('AuthController', () => {
       name: 'Test User',
       role: 'CUSTOMER',
     }),
+    login: jest.fn().mockResolvedValue({ access_token: 'xyz' }),
   };
 
   beforeEach(async () => {

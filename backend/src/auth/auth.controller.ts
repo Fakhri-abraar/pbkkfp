@@ -1,7 +1,7 @@
-// backend/src/auth/auth.controller.ts
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Post, HttpCode, HttpStatus } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
+import { LoginDto } from './dto/login.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -10,5 +10,11 @@ export class AuthController {
   @Post('register')
   async register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
+  }
+
+  @Post('login')
+  @HttpCode(HttpStatus.OK) // Return 200 OK (default POST adalah 201)
+  async login(@Body() dto: LoginDto) {
+    return this.authService.login(dto);
   }
 }
