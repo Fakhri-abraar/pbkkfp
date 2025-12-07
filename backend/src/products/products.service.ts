@@ -7,21 +7,23 @@ import { PrismaService } from '../prisma/prisma.service';
 export class ProductsService {
   constructor(private prisma: PrismaService) {}
 
-  async create(userId: string, dto: CreateProductDto, imagePath: string | null) {
-    if (!imagePath) {
-      throw new BadRequestException('Gambar produk wajib diupload!');
-    }
-
-    return this.prisma.product.create({
-      data: {
-        ...dto,
-        price: Number(dto.price), // Pastikan jadi number
-        stock: Number(dto.stock), // Pastikan jadi number
-        imageUrl: imagePath,
-        userId: userId,
-      },
-    });
+async create(userId: string, dto: CreateProductDto, imagePath: string | null) {
+  if (!imagePath) {
+    throw new BadRequestException('Gambar produk wajib diupload!');
   }
+
+  return this.prisma.product.create({
+    data: {
+      name: dto.name,
+      description: dto.description,
+      // Pastikan konversi ke number atau string agar Prisma bisa menjadikannya Decimal
+      price: Number(dto.price), 
+      stock: Number(dto.stock),
+      imageUrl: imagePath,
+      userId: userId,
+    },
+  });
+}
 
   async findAll() {
     return this.prisma.product.findMany({

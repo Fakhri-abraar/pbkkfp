@@ -43,11 +43,15 @@ describe('ProductsService', () => {
       const imagePath = 'uploads/laptop.jpg';
 
       mockPrismaService.product.create.mockResolvedValue({
-        id: 'prod-1',
-        ...createProductDto,
-        imageUrl: imagePath,
-        userId,
-      });
+  id: 'prod-1',
+  ...createProductDto,
+  price: Number(createProductDto.price), // Mock return value
+  stock: Number(createProductDto.stock),
+  imageUrl: imagePath,
+  userId,
+  createdAt: new Date(), // Tambahan karena schema baru
+  updatedAt: new Date(), // Tambahan karena schema baru
+});
 
       const result = await service.create(userId, createProductDto, imagePath);
 
