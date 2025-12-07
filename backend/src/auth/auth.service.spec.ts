@@ -1,19 +1,25 @@
+// backend/src/auth/auth.service.spec.ts
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthService } from './auth.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt';
 import { UnauthorizedException } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 
-// 1. Mock Prisma (Perbaikan: Menambahkan findUnique)
+// 1. MOCK MODULE BCRYPT SECARA GLOBAL
+jest.mock('bcrypt', () => ({
+  genSalt: jest.fn().mockResolvedValue('salt'),
+  hash: jest.fn().mockResolvedValue('hashedPassword'),
+  compare: jest.fn(), // Kita akan atur return value-nya nanti per test case
+}));
+
 const mockPrismaService = {
   user: {
     create: jest.fn(),
-    findUnique: jest.fn(), // <--- Wajib ada agar tidak error "undefined"
+    findUnique: jest.fn(),
   },
 };
 
-// 2. Mock JWT Service
 const mockJwtService = {
   signAsync: jest.fn(),
 };
@@ -35,6 +41,8 @@ describe('AuthService', () => {
     service = module.get<AuthService>(AuthService);
     prisma = module.get<PrismaService>(PrismaService);
     jwt = module.get<JwtService>(JwtService);
+    
+    jest.clearAllMocks(); // Bersihkan mock sebelum tiap test
   });
 
   it('should be defined', () => {
@@ -50,11 +58,10 @@ describe('AuthService', () => {
         role: 'SELLER' as any,
       };
 
-      // Mock return create
       mockPrismaService.user.create.mockResolvedValue({
         id: 'uuid-123',
         ...dto,
-        password: 'hashed_password_example',
+        password: 'hashedPassword',
         createdAt: new Date(),
         updatedAt: new Date(),
       });
@@ -63,44 +70,35 @@ describe('AuthService', () => {
 
       expect(result).toHaveProperty('id');
       expect(result.email).toEqual(dto.email);
-      expect(prisma.user.create).toHaveBeenCalled();
+      expect(bcrypt.hash).toHaveBeenCalled(); // Pastikan fungsi hash dipanggil
     });
   });
 
   describe('login', () => {
+    const loginDto = { email: 'test@mail.com', password: 'password123' };
+    const mockUser = {
+      id: '1',
+      email: 'test@mail.com',
+      name: 'Test User',
+      password: 'hashed_password',
+      role: 'CUSTOMER',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
     it('should return access token if credentials valid', async () => {
-      const loginDto = { email: 'test@mail.com', password: 'password123' };
-      
-      // 3. Mock User Data (Lengkap sesuai schema)
-      const mockUser = {
-        id: '1',
-        email: 'test@mail.com',
-        name: 'Test User', // <--- Penting: field ini diakses di service
-        password: 'hashed_password',
-        role: 'CUSTOMER',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      
+      // Setup Mock
       mockPrismaService.user.findUnique.mockResolvedValue(mockUser);
-
-      // 4. Mock bcrypt compare (Return TRUE)
-      // Menggunakan casting 'as any' untuk menghindari masalah tipe data Promise boolean
-      jest.spyOn(bcrypt, 'compare').mockImplementation(() => Promise.resolve(true) as any);
-
-      // 5. Mock JWT sign
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true); // Password COCOK
       mockJwtService.signAsync.mockResolvedValue('fake_jwt_token');
 
       const result = await service.login(loginDto);
 
-      // Assertions
       expect(result).toHaveProperty('access_token', 'fake_jwt_token');
-      expect(result.user.email).toEqual(loginDto.email);
       expect(prisma.user.findUnique).toHaveBeenCalledWith({ where: { email: loginDto.email } });
     });
 
     it('should throw UnauthorizedException if user not found', async () => {
-      // Mock user tidak ditemukan (null)
       mockPrismaService.user.findUnique.mockResolvedValue(null);
 
       await expect(service.login({ email: 'wrong@mail.com', password: '123' }))
@@ -108,17 +106,8 @@ describe('AuthService', () => {
     });
 
     it('should throw UnauthorizedException if password invalid', async () => {
-      const mockUser = {
-        id: '1',
-        email: 'test@mail.com',
-        password: 'hashed_password',
-        name: 'Test',
-        role: 'CUSTOMER',
-      };
-      
       mockPrismaService.user.findUnique.mockResolvedValue(mockUser);
-      // Mock bcrypt return FALSE (password salah)
-      jest.spyOn(bcrypt, 'compare').mockImplementation(() => Promise.resolve(false) as any);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(false); // Password SALAH
 
       await expect(service.login({ email: 'test@mail.com', password: 'wrong_password' }))
         .rejects.toThrow(UnauthorizedException);

@@ -1,3 +1,4 @@
+// backend/src/auth/strategy/jwt.strategy.ts
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
@@ -12,7 +13,8 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      secretOrKey: config.get<string>('JWT_SECRET')!, // memastikan bukan undefined
+      // Tambahkan tanda seru (!) atau string kosong sebagai fallback
+      secretOrKey: config.get<string>('JWT_SECRET')!, 
     });
   }
 
@@ -21,9 +23,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       where: { id: payload.sub },
     });
     
-    if (!user) return null;
-
-    const { password, ...safeUser } = user;
-    return safeUser;
+    if (user) delete (user as any).password;
+    return user; 
   }
 }
