@@ -9,6 +9,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Enum untuk membedakan Seller dan Customer (Requirements 2.1.3 & 4.2)
 enum Role {
   SELLER
   CUSTOMER
@@ -17,47 +18,26 @@ enum Role {
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
-  password  String
+  password  String   // Akan di-hash (Requirement 2.1.1)
   name      String
   role      Role     @default(CUSTOMER)
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   
-  products  Product[] // Relasi: Seller punya banyak produk
-  orders    Order[]   // Relasi: Customer punya banyak order
+  // Relasi untuk E-commerce
+  products  Product[] // Seller punya produk
+  orders    Order[]   // Customer punya pesanan
 }
 
+// Entity Placeholder agar tidak error (akan dilanjut hari ke-3)
 model Product {
-  id          String   @id @default(uuid())
-  name        String
-  description String
-  price       Decimal
-  stock       Int
-  imageUrl    String?  // Untuk fitur File Upload
-  userId      String   // Pemilik produk (Seller)
-  createdAt   DateTime @default(now())
-
-  user       User        @relation(fields: [userId], references: [id])
-  orderItems OrderItem[]
+  id        String @id @default(uuid())
+  userId    String
+  user      User   @relation(fields: [userId], references: [id])
 }
 
 model Order {
-  id        String      @id @default(uuid())
+  id        String @id @default(uuid())
   userId    String
-  total     Decimal
-  status    String      @default("PENDING") // PENDING, SHIPPED, DELIVERED
-  createdAt DateTime    @default(now())
-
-  user       User        @relation(fields: [userId], references: [id])
-  items      OrderItem[]
-}
-
-model OrderItem {
-  id        String  @id @default(uuid())
-  orderId   String
-  productId String
-  quantity  Int
-  price     Decimal // Harga saat beli (snapshot)
-
-  order   Order   @relation(fields: [orderId], references: [id])
-  product Product @relation(fields: [productId], references: [id])
+  user      User   @relation(fields: [userId], references: [id])
 }
