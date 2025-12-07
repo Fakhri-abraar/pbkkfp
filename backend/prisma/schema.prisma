@@ -1,0 +1,63 @@
+// backend/prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SELLER
+  CUSTOMER
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role     @default(CUSTOMER)
+  createdAt DateTime @default(now())
+  
+  products  Product[] // Relasi: Seller punya banyak produk
+  orders    Order[]   // Relasi: Customer punya banyak order
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  name        String
+  description String
+  price       Decimal
+  stock       Int
+  imageUrl    String?  // Untuk fitur File Upload
+  userId      String   // Pemilik produk (Seller)
+  createdAt   DateTime @default(now())
+
+  user       User        @relation(fields: [userId], references: [id])
+  orderItems OrderItem[]
+}
+
+model Order {
+  id        String      @id @default(uuid())
+  userId    String
+  total     Decimal
+  status    String      @default("PENDING") // PENDING, SHIPPED, DELIVERED
+  createdAt DateTime    @default(now())
+
+  user       User        @relation(fields: [userId], references: [id])
+  items      OrderItem[]
+}
+
+model OrderItem {
+  id        String  @id @default(uuid())
+  orderId   String
+  productId String
+  quantity  Int
+  price     Decimal // Harga saat beli (snapshot)
+
+  order   Order   @relation(fields: [orderId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+}
