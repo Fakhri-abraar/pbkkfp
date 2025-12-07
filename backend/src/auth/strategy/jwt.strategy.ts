@@ -1,4 +1,3 @@
-// backend/src/auth/strategy/jwt.strategy.ts
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
@@ -12,21 +11,19 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     private prisma: PrismaService,
   ) {
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(), // Ambil token dari Header Authorization: Bearer <token>
-      secretOrKey: config.get('JWT_SECRET'), // Cek tanda tangan token pakai Secret Key
+      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      secretOrKey: config.get<string>('JWT_SECRET')!, // memastikan bukan undefined
     });
   }
 
   async validate(payload: any) {
-    // Fungsi ini terpanggil jika token valid.
-    // Kita bisa ambil data user dari database berdasarkan payload.sub (userId)
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
     });
     
-    // Hapus password agar tidak bocor ke request
-    if (user) delete user.password;
-    return user; 
-    // Return value ini akan ditempel ke `request.user` di Controller
+    if (!user) return null;
+
+    const { password, ...safeUser } = user;
+    return safeUser;
   }
 }
